@@ -81,6 +81,71 @@ const WORLDS = [
         title: "三つ揃い",
         par: 6,
       },
+      {
+        // 1-6  L-turn: push right then up                    (9 moves)
+        map: [
+          "########",
+          "#.     #",
+          "#      #",
+          "##   $ #",
+          "##  @  #",
+          "########",
+        ],
+        title: "L字押し",
+        par: 9,
+      },
+      {
+        // 1-7  Two stones push straight up                   (12 moves)
+        map: [
+          "#########",
+          "# .   . #",
+          "#       #",
+          "# $   $ #",
+          "#   @   #",
+          "#########",
+        ],
+        title: "左右対称",
+        par: 12,
+      },
+      {
+        // 1-8  Three stones pushed up 2 steps each          (17 moves)
+        map: [
+          "###########",
+          "# . . .   #",
+          "#         #",
+          "# $ $ $   #",
+          "#    @    #",
+          "###########",
+        ],
+        title: "三石の道",
+        par: 17,
+      },
+      {
+        // 1-9  Stone around a wall gap                      (10 moves)
+        map: [
+          "#######",
+          "#.    #",
+          "# ### #",
+          "#   $ #",
+          "#  @  #",
+          "#######",
+        ],
+        title: "壁の隙間",
+        par: 10,
+      },
+      {
+        // 1-10 Two stones, each needs L-turn               (18 moves)
+        map: [
+          "########",
+          "#.    .#",
+          "#      #",
+          "# $  $ #",
+          "##  @  #",
+          "########",
+        ],
+        title: "序章の完成",
+        par: 18,
+      },
     ],
   },
 
