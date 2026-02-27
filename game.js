@@ -308,14 +308,21 @@ function updateParticles() {
   }
 }
 
+// ─── Touch device detection ───────────────────────────────────────────────────
+function hasTouchScreen() {
+  return navigator.maxTouchPoints > 0;
+}
+
 // ─── Grid offset (center in canvas) ─────────────────────────────────────────
 function getGridOffset() {
   if (grid.length === 0) return { ox: 0, oy: 0 };
   const rows = grid.length;
   const cols = Math.max(...grid.map(r => r.length));
+  const touch = hasTouchScreen() && screen === SCREENS.GAME;
+  const maxH = touch ? H * 0.56 : H * 0.75;
   const tileScale = Math.min(
     (W * 0.85) / (cols * TILE),
-    (H * 0.75) / (rows * TILE)
+    maxH / (rows * TILE)
   );
   const ts = Math.min(tileScale, 1.0);
   const tw = TILE * ts;
@@ -323,8 +330,52 @@ function getGridOffset() {
   const totalW = cols * tw;
   const totalH = rows * th;
   const ox = (W - totalW) / 2;
-  const oy = (H - totalH) / 2 + H * 0.04;
+  const oy = touch
+    ? H * 0.09 + (maxH - totalH) / 2
+    : (H - totalH) / 2 + H * 0.04;
   return { ox, oy, ts, tw, th };
+}
+
+// ─── Virtual D-pad ────────────────────────────────────────────────────────────
+function getDpadRegions() {
+  const s  = Math.min(W * 0.09, H * 0.115); // button size
+  const gap = s * 0.2;
+  const cx = W * 0.16;   // D-pad center X
+  const cy = H * 0.84;   // D-pad center Y
+  const bw = s * 1.4;    // action button width
+  const bh = s * 0.72;   // action button height
+  const ax = W * 0.73;   // action buttons X center
+  return {
+    up:    { x: cx - s/2,      y: cy - s - gap,  w: s,  h: s,  label: '↑',         action: () => tryMove(0, -1) },
+    down:  { x: cx - s/2,      y: cy + gap,      w: s,  h: s,  label: '↓',         action: () => tryMove(0, 1)  },
+    left:  { x: cx - s - gap,  y: cy - s/2,      w: s,  h: s,  label: '←',         action: () => tryMove(-1, 0) },
+    right: { x: cx + gap,      y: cy - s/2,      w: s,  h: s,  label: '→',         action: () => tryMove(1, 0)  },
+    undo:  { x: ax - bw/2,     y: cy - bh - gap, w: bw, h: bh, label: '↩ 戻す',    action: undoMove },
+    reset: { x: ax - bw/2,     y: cy + gap,      w: bw, h: bh, label: '↺ やり直し', action: () => loadLevel(currentWorld, currentLevel) },
+    back:  { x: W * 0.78,      y: H * 0.01,      w: W * 0.20, h: H * 0.075, label: '≡ 選択へ', action: () => { screen = SCREENS.LEVEL_SELECT; } },
+  };
+}
+
+function drawVirtualDpad() {
+  if (!hasTouchScreen()) return;
+  const regions = getDpadRegions();
+  ctx.save();
+  for (const [key, btn] of Object.entries(regions)) {
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    roundRect(ctx, btn.x, btn.y, btn.w, btn.h, Math.min(btn.w, btn.h) * 0.22);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,185,150,0.38)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(215,200,165,0.82)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const isArrow = ['up', 'down', 'left', 'right'].includes(key);
+    ctx.font = `${Math.floor(isArrow ? btn.h * 0.55 : btn.h * 0.42)}px serif`;
+    ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+  }
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
 }
 
 // ─── Drawing ─────────────────────────────────────────────────────────────────
@@ -429,7 +480,7 @@ function drawTitleScreen() {
   ctx.textAlign = 'center';
   ctx.font = `${Math.floor(W * 0.018)}px 'Hiragino Mincho ProN',serif`;
   ctx.fillStyle = 'rgba(150,140,120,0.6)';
-  ctx.fillText('↑↓ 選択  /  Enter・Space・クリックで決定', W / 2, H * 0.94);
+  ctx.fillText(hasTouchScreen() ? 'タップして選択' : '↑↓ 選択  /  Enter・Space・クリックで決定', W / 2, H * 0.94);
   ctx.restore();
 }
 
@@ -512,7 +563,7 @@ function drawWorldSelectScreen() {
   ctx.textAlign = 'center';
   ctx.font = `${Math.floor(W * 0.018)}px serif`;
   ctx.fillStyle = 'rgba(150,140,120,0.6)';
-  ctx.fillText('矢印キーで選択 / Enter で決定 / Esc でタイトルへ', W / 2, H * 0.96);
+  ctx.fillText(hasTouchScreen() ? 'タップして章を選ぶ' : '矢印キーで選択 / Enter で決定 / Esc でタイトルへ', W / 2, H * 0.96);
   ctx.restore();
 }
 
@@ -601,7 +652,7 @@ function drawLevelSelectScreen() {
   ctx.textAlign = 'center';
   ctx.font = `${Math.floor(W * 0.018)}px serif`;
   ctx.fillStyle = 'rgba(100,90,80,0.7)';
-  ctx.fillText('矢印で選択 / Enter で開始 / Esc でワールド選択へ', W / 2, H * 0.96);
+  ctx.fillText(hasTouchScreen() ? 'タップしてステージを選ぶ' : '矢印で選択 / Enter で開始 / Esc でワールド選択へ', W / 2, H * 0.96);
   ctx.restore();
 }
 
@@ -659,6 +710,9 @@ function drawGame() {
     ctx.restore();
   }
 
+  // Virtual D-pad (touch only)
+  drawVirtualDpad();
+
   // Completion overlay
   if (completionAnimation > 0) {
     const alpha = Math.min(completionAnimation * 2, 0.7);
@@ -711,11 +765,13 @@ function drawHUD(color) {
   ctx.fillStyle = 'rgba(100,90,80,0.6)';
   ctx.fillText(`目安 ${par}手`, W / 2, H * 0.075);
 
-  // Undo button hint
+  // Hint (keyboard only on non-touch)
   ctx.textAlign = 'right';
   ctx.font = `${Math.floor(W * 0.017)}px serif`;
   ctx.fillStyle = 'rgba(100,90,80,0.7)';
-  ctx.fillText('Z: 戻す   R: リセット   Esc: 選択', W * 0.98, H * 0.055);
+  if (!hasTouchScreen()) {
+    ctx.fillText('Z: 戻す   R: リセット   Esc: 選択', W * 0.98, H * 0.055);
+  }
 
   ctx.restore();
 }
@@ -923,9 +979,9 @@ function drawClearScreen() {
   // Options
   ctx.font = `${Math.floor(W * 0.028)}px serif`;
   ctx.fillStyle = '#c8b890';
-  ctx.fillText('Enter / Space: 次のステージ', W / 2, H * 0.7);
+  ctx.fillText(hasTouchScreen() ? 'タップして次のステージへ' : 'Enter / Space: 次のステージ', W / 2, H * 0.7);
   ctx.fillStyle = '#998877';
-  ctx.fillText('R: もう一度   /   Esc: ステージ選択', W / 2, H * 0.78);
+  ctx.fillText(hasTouchScreen() ? 'やり直しボタンでもう一度' : 'R: もう一度   /   Esc: ステージ選択', W / 2, H * 0.78);
 
   ctx.restore();
 }
@@ -952,7 +1008,7 @@ function drawWorldClearScreen() {
 
     ctx.font = `${Math.floor(W * 0.025)}px serif`;
     ctx.fillStyle = '#998877';
-    ctx.fillText('Enter: 次の章へ   /   Esc: タイトルへ', W / 2, H * 0.8);
+    ctx.fillText(hasTouchScreen() ? 'タップして次の章へ' : 'Enter: 次の章へ   /   Esc: タイトルへ', W / 2, H * 0.8);
   }
 
   ctx.restore();
@@ -999,7 +1055,7 @@ function drawGameClearScreen() {
 
   ctx.font = `${Math.floor(W * 0.025)}px serif`;
   ctx.fillStyle = '#c8b890';
-  ctx.fillText('Enter: タイトルへ戻る', W / 2, H * 0.82);
+  ctx.fillText(hasTouchScreen() ? 'タップしてタイトルへ' : 'Enter: タイトルへ戻る', W / 2, H * 0.82);
 
   ctx.restore();
 }
@@ -1241,6 +1297,25 @@ canvas.addEventListener('click', e => {
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
 
+  if (screen === SCREENS.CLEAR) {
+    nextLevel();
+    return;
+  }
+  if (screen === SCREENS.WORLD_CLEAR) {
+    if (currentWorld < WORLDS.length - 1) {
+      currentWorld++;
+      currentLevel = 0;
+      screen = SCREENS.LEVEL_SELECT;
+    } else {
+      screen = SCREENS.TITLE;
+    }
+    return;
+  }
+  if (screen === SCREENS.GAME_CLEAR) {
+    screen = SCREENS.TITLE;
+    return;
+  }
+
   if (screen === SCREENS.TITLE) {
     // Check menu click
     const menuY = H * 0.62;
@@ -1317,16 +1392,41 @@ canvas.addEventListener('click', e => {
   }
 });
 
-// Swipe support
+// Swipe / D-pad support
 let touchStart = null;
+let dpadTouched = false;
+
 canvas.addEventListener('touchstart', e => {
-  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  const touch = e.touches[0];
+  dpadTouched = false;
+
+  // Check D-pad immediately on touchstart (game screen only)
+  if (screen === SCREENS.GAME) {
+    const rect = canvas.getBoundingClientRect();
+    const tx = (touch.clientX - rect.left) * (W / rect.width);
+    const ty = (touch.clientY - rect.top) * (H / rect.height);
+    const regions = getDpadRegions();
+    for (const btn of Object.values(regions)) {
+      if (tx >= btn.x && tx <= btn.x + btn.w && ty >= btn.y && ty <= btn.y + btn.h) {
+        btn.action();
+        dpadTouched = true;
+        e.preventDefault();
+        return;
+      }
+    }
+  }
+
+  touchStart = { x: touch.clientX, y: touch.clientY };
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
   e.preventDefault();
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
+  if (dpadTouched) { dpadTouched = false; e.preventDefault(); return; }
   if (!touchStart) return;
-  const rect = canvas.getBoundingClientRect();
   const ex = e.changedTouches[0].clientX;
   const ey = e.changedTouches[0].clientY;
   const dx = ex - touchStart.x;
@@ -1339,8 +1439,8 @@ canvas.addEventListener('touchend', e => {
     } else {
       tryMove(0, dy > 0 ? 1 : -1);
     }
-  } else if (dist < 10) {
-    // Tap = click
+  } else if (dist < 15) {
+    // Tap → fire as click
     const fakeClick = new MouseEvent('click', {
       clientX: e.changedTouches[0].clientX,
       clientY: e.changedTouches[0].clientY
