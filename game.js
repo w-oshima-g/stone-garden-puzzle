@@ -308,9 +308,44 @@ function updateParticles() {
   }
 }
 
-// ─── Touch device detection ───────────────────────────────────────────────────
-function hasTouchScreen() {
+// ─── UI Mode (mobile/PC toggle) ──────────────────────────────────────────────
+let mobileUI = (() => {
+  const saved = localStorage.getItem('stonegarden_uimode');
+  if (saved !== null) return saved === 'mobile';
   return navigator.maxTouchPoints > 0;
+})();
+
+function hasTouchScreen() { return mobileUI; }
+
+function toggleUIMode() {
+  mobileUI = !mobileUI;
+  localStorage.setItem('stonegarden_uimode', mobileUI ? 'mobile' : 'pc');
+}
+
+function getUIModeToggleBtn() {
+  if (screen === SCREENS.GAME) return null;
+  const w = W * 0.22;
+  const h = H * 0.065;
+  return { x: W - w - W * 0.01, y: H - h - H * 0.01, w, h };
+}
+
+function drawUIModeToggle() {
+  const btn = getUIModeToggleBtn();
+  if (!btn) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  roundRect(ctx, btn.x, btn.y, btn.w, btn.h, btn.h * 0.3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(200,185,150,0.32)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(180,165,130,0.85)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${Math.floor(btn.h * 0.44)}px serif`;
+  ctx.fillText(mobileUI ? '📱 スマホ' : '💻 PC', btn.x + btn.w / 2, btn.y + btn.h / 2);
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
 }
 
 // ─── Grid offset (center in canvas) ─────────────────────────────────────────
@@ -1099,6 +1134,7 @@ function draw() {
     case SCREENS.GAME_CLEAR:    drawGameClearScreen(); break;
   }
 
+  drawUIModeToggle();
   updateSandTrails();
   updateParticles();
 
@@ -1296,6 +1332,13 @@ canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
+
+  // UI mode toggle button
+  const uiBtn = getUIModeToggleBtn();
+  if (uiBtn && mx >= uiBtn.x && mx <= uiBtn.x + uiBtn.w && my >= uiBtn.y && my <= uiBtn.y + uiBtn.h) {
+    toggleUIMode();
+    return;
+  }
 
   if (screen === SCREENS.CLEAR) {
     nextLevel();

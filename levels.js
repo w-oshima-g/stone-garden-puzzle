@@ -158,14 +158,15 @@ const WORLDS = [
     color: { bg: "#d8e8e0", wall: "#3a5248", floor: "#c4d8cc", goal: "#5a8e6e", sand: "#b8cec0" },
     levels: [
       {
-        // 2-1  Stone behind a wall; route around       (~8 moves)
+        // 2-1  Stone in lower area; route around the barrier via col-4/5 passage
+        //      Optimal: ↓→↑↑↑→↑← = 8 moves
         map: [
           "#######",
-          "#.    #",
-          "#### ##",
+          "#  .  #",
+          "####  #",
           "#    ##",
-          "#$ @  #",
-          "#     #",
+          "#  @$##",
+          "#    ##",
           "#######",
         ],
         title: "回り道",
