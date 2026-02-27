@@ -99,6 +99,9 @@ function loadLevel(worldIdx, levelIdx) {
   const lvl = WORLDS[worldIdx].levels[levelIdx];
   const rawMap = lvl.map;
 
+  // Switch BGM if world changed
+  SoundEngine.startBGM(worldIdx);
+
   // Parse map
   grid = rawMap.map(row => row.split(''));
   sandTrails = [];
@@ -156,6 +159,7 @@ function tryMove(dx, dy) {
     lastMoveDir = { dx, dy };
     addSandTrail(playerPos.x, playerPos.y, dx, dy);
     moved = true;
+    SoundEngine.sfxStep();
   } else if (isPushable(ahead)) {
     // Push stone
     const nx2 = nx + dx;
@@ -172,12 +176,14 @@ function tryMove(dx, dy) {
       addSandTrail(playerPos.x, playerPos.y, dx, dy);
       addSandTrail(nx2, ny2, dx, dy);
       moved = true;
+      SoundEngine.sfxPush();
 
       // Check if stone landed on goal
       if (beyondIsGoal) {
         spawnGoalParticles(nx2, ny2);
         shakeDuration = 8;
         shakeIntensity = 2;
+        SoundEngine.sfxGoal();
       }
 
       // Check win
@@ -190,10 +196,12 @@ function tryMove(dx, dy) {
       // Can't push - revert undo snapshot
       history.pop();
       shakeDuration = 6; shakeIntensity = 3;
+      SoundEngine.sfxBump();
     }
   } else {
     history.pop();
     shakeDuration = 6; shakeIntensity = 3;
+    SoundEngine.sfxBump();
   }
 
   if (moved) {
@@ -219,6 +227,7 @@ function undoMove() {
   animTick++;
   shakeDuration = 4;
   shakeIntensity = 1;
+  SoundEngine.sfxUndo();
 }
 
 function checkWin() {
@@ -244,10 +253,13 @@ function handleLevelClear() {
 
   if (isLastWorld && isLastLevel) {
     screen = SCREENS.GAME_CLEAR;
+    SoundEngine.sfxGameClear();
   } else if (isLastLevel) {
     screen = SCREENS.WORLD_CLEAR;
+    SoundEngine.sfxWorldClear();
   } else {
     screen = SCREENS.CLEAR;
+    SoundEngine.sfxClear();
   }
 }
 
@@ -1341,5 +1353,17 @@ canvas.addEventListener('touchend', e => {
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
 draw();
+
+// Initialize audio on first user interaction (required by browser autoplay policy)
+let audioInited = false;
+function maybeInitAudio() {
+  if (!audioInited) {
+    audioInited = true;
+    SoundEngine.init();
+  }
+}
+window.addEventListener('keydown', maybeInitAudio, { once: false });
+canvas.addEventListener('click', maybeInitAudio, { once: false });
+canvas.addEventListener('touchstart', maybeInitAudio, { once: false });
 
 })();
